@@ -32,7 +32,6 @@ movies$gross_income <- as.numeric(movies$gross_income)
 movies$votes <- as.numeric(movies$votes)
 movies <- movies %>%
   mutate(duration = as.integer(gsub(" min", "", duration)))
-write.csv(movies, "cleaned_movies.csv", row.names = FALSE)
 head(movies)
 ```
 
