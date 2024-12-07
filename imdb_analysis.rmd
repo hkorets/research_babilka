@@ -8,7 +8,7 @@ library(tidyverse)
 library(ggplot2)
 ```
 
-## Step 1: Data Cleaning
+## Data Cleaning
 
 ```{r}
 movies <- read.csv("movies.csv")
