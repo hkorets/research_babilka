@@ -6,12 +6,16 @@ output: html_notebook
 ```{r}
 library(tidyverse)
 library(ggplot2)
+library(dplyr)
 ```
 
 ## Data Cleaning
 
 ```{r}
 movies <- read.csv("movies.csv")
+```
+
+```{r}
 #clear all null values for better analysis
 movies <- movies %>% filter(gross_income != 0)
 movies <- movies %>% filter(directors_name != "nm0000000")
@@ -28,11 +32,21 @@ movies <- movies %>%
     certificate %in% c("PG", "TV-PG", "GP") ~ 1,
     TRUE ~ 0
   ))
-movies$gross_income <- as.numeric(movies$gross_income)
-movies$votes <- as.numeric(movies$votes)
 movies <- movies %>%
-  mutate(duration = as.integer(gsub(" min", "", duration)))
+  mutate(
+    gross_income = gsub(",", "", gross_income), # Видаляємо коми
+    gross_income = as.numeric(gross_income)    # Перетворюємо на числовий формат
+  )
+movies <- movies %>%
+  mutate(
+    votes = gsub(",", "", votes),
+    votes = as.numeric(votes)
+  )
+
+movies <- movies %>%
+  mutate(duration = as.integer(gsub("[^0-9]", "", duration)))
 head(movies)
+
 ```
 
 ## Hypothesis test
@@ -113,3 +127,95 @@ genre_means
 
 Here we might see what movies genres have most gross income. The most grossing genre is the western, the least - game shows.
 
+### 2. Movies directed by a specific director are significantly higher than the the average rating of all movies.
+
+Here we will try to find out whether director has impact on rating of movies
+
+#### Null Hypothesis ($H_{0}$):
+
+The mean ratings of movies directed by a specific director (e.g., Christopher Nolan) are equal to the population mean.
+
+#### Alternative Hypothesis (H₁):
+
+The mean ratings of movies directed by the specific director are sig- nificantly higher than the population mean.
+
+For this hypothesis we will use *t-test*
+
+### Key Concepts of t-test
+
+A t-test is a statistical test used to compare the means of two groups or a sample mean with a known population mean to determine if there is a significant difference between them. The key steps are:
+
+1.  For each director, calculate the average rating and average gross income of their movies to choose the top director.
+
+2.  Calculate the mean rating of the selected director’s movies.
+
+3.  Calculate the mean rating of all movies in the population.
+
+4.  Use the one-sample t-test formula to calculate the t-statistic: $t = \frac{\bar{x} - \mu}{s / \sqrt{n}}$
+
+5.  Evaluate the p-value to decide whether to reject the null hypothesis.
+
+### R Implementation
+
+```{r}
+# Separate the directors by commas and create separate lines for each
+movies_separated <- movies %>%
+  separate_rows(directors_name, sep = ",") %>%
+  mutate(directors_name = str_trim(directors_name))  # Remove unnecessary spaces
+
+# Now we can continue with the analysis for each director
+top_directors <- movies_separated %>%
+  group_by(directors_name) %>%
+  summarize(
+    avg_rating = mean(rating, na.rm = TRUE),
+    avg_gross_income = mean(gross_income, na.rm = TRUE)
+  ) %>%
+  filter(
+    avg_rating >= quantile(movies_separated$rating, 0.9, na.rm = TRUE) &
+    avg_gross_income >= quantile(movies_separated$gross_income, 0.9, na.rm = TRUE)
+  ) %>%
+  arrange(desc(avg_rating), desc(avg_gross_income))
+
+print(top_directors)
+```
+
+```{r}
+director <- head(top_directors$directors_name, 1)
+
+director_movies <- movies %>%
+  filter(directors_name == director)
+
+mean_director_rating <- mean(director_movies$rating, na.rm = TRUE)
+mean_population_rating <- mean(movies$rating, na.rm = TRUE)
+
+t_test_result <- t.test(director_movies$rating, mu = mean_population_rating, alternative = "greater")
+
+director
+t_test_result  
+
+ratings_data <- data.frame(
+  Category = c("Population Mean", "Director's Mean"),
+  Mean_Rating = c(mean_population_rating, mean_director_rating)
+)
+
+# Plot the bar chart
+bar_plot <- ggplot(ratings_data, aes(x = Category, y = Mean_Rating, fill = Category)) +
+  geom_bar(stat = "identity", width = 0.5) +
+  geom_hline(yintercept = mean_population_rating, linetype = "dashed", color = "red", linewidth = 0.8, alpha = 0.7) +
+  labs(
+    title = paste("Comparison of Ratings: ", director),
+    x = "Category",
+    y = "Mean Rating"
+  ) +
+  theme_minimal() +
+  scale_fill_manual(values = c("lightgreen", "salmon")) +
+  theme(legend.position = "none")
+
+print(bar_plot)
+```
+
+### Test conclusion
+
+The p-value ($0.01948$) is less than the typical significance level ( $\alpha = 0.05$). This means we reject the null hypothesis ($H_{0}$) and accept the alternative hypothesis ($H_{1}$).
+
+There is sufficient evidence to conclude that the mean rating of movies directed by the specific director is significantly higher than the population mean rating at a 95% confidence level.
