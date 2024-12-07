@@ -1,0 +1,119 @@
+---
+title: "Research project"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+```
+
+## Step 1: Data Cleaning
+
+```{r}
+movies <- read.csv("movies.csv")
+#clear all null values for better analysis
+movies <- movies %>% filter(gross_income != 0)
+movies <- movies %>% filter(directors_name != "nm0000000")
+movies <- movies %>% filter(rating != 11.0)
+#String tags to integers
+movies <- movies %>%
+  mutate(certificate = case_when(
+    certificate %in% c("G", "TV-G", "TV-Y", "E", "K-A", "Passed", "Approved") ~ 1,
+    certificate %in% c("6+") ~ 6,
+    certificate %in% c("12", "PG-12") ~ 12,
+    certificate %in% c("PG-13", "TV-13", "MA-13", "M/PG", "M") ~ 13,
+    certificate %in% c("R", "TV-MA", "MA-17", "R-15", "T") ~ 17,
+    certificate %in% c("NC-17", "R-18", "18", "AO") ~ 18,
+    certificate %in% c("PG", "TV-PG", "GP") ~ 1,
+    TRUE ~ 0
+  ))
+movies$gross_income <- as.numeric(movies$gross_income)
+movies$votes <- as.numeric(movies$votes)
+movies <- movies %>%
+  mutate(duration = as.integer(gsub(" min", "", duration)))
+write.csv(movies, "cleaned_movies.csv", row.names = FALSE)
+head(movies)
+
+
+
+```
+
+## Hypothesis test
+
+### 1. Movies in popular genres tend to have higher gross income.
+
+In this analysis, we are testing the relationship between a movie's genre and its gross income.
+
+#### Null Hypothesis (H₀):
+
+There is **no relationship** between a movie's genre and its gross income.\
+**H₀**: The mean gross income is the same across all genres.
+
+#### Alternative Hypothesis (H₁):
+
+Movies in **popular genres** tend to have higher gross income compared to those in less popular genres.\
+**H₁**: The mean gross income differs across genres.
+
+To test this hypothesis we use **ANOVA test**.
+
+### Key Concepts of ANOVA (Analysis of Variance)
+
+In summary, ANOVA compares the **variance** within groups and between groups to assess whether there are significant differences in the means. The key steps are:
+
+1.  **Calculate** the total, between-group, and within-group sums of squares. $$
+    \text{SST}, \text{SSB}, \text{SSW}
+    $$
+
+2.  **Compute** the mean squares by dividing the sums of squares by their respective degrees of freedom. $$
+    \text{MSB} = \frac{\text{SSB}}{\text{dfB}}, \quad \text{MSW} = \frac{\text{SSW}}{\text{dfW}}
+    $$
+
+3.  **Determine** the F-statistic by comparing the mean square between groups to the mean square within groups. $$
+    F = \frac{\text{MSB}}{\text{MSW}}
+    $$
+
+4.  **Evaluate** the p-value to decide whether to reject the null hypothesis.
+
+### R Implementation
+
+```{r}
+movies_data_separated <- movies %>%
+  # Split genres by commas and gather them into separate rows
+  separate_rows(genre, sep = ",") %>%
+  # Trim any leading/trailing spaces
+  mutate(genre = str_trim(genre))
+
+# Step 2: Perform One-way ANOVA
+anova_result <- aov(gross_income ~ genre, data = movies_data_separated)
+
+# Summarize the ANOVA result
+summary(anova_result)
+
+# Step 3: Visualize the gross income distribution across genres
+ggplot(movies_data_separated, aes(x = genre, y = gross_income)) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Gross Income Distribution Across Genres",
+       x = "Genre",
+       y = "Gross Income")
+```
+
+### Test conclusion
+
+-   **F-value**: A value of **3.763** means that the variation between genres is about 3.763 times larger than the variation within genres.
+-   **P-value**: The p-value is **1.9e-08**, which is **very small**, meaning the result is statistically significant. This tells us that the genre **does indeed affect gross income**.
+-   **Plot**: Plot generated based on data also prove that gross income vary between genres.
+
+```{r}
+genre_means <- movies_data_separated %>%
+  group_by(genre) %>%                   # Group by genre
+  summarise(mean_gross_income = mean(gross_income, na.rm = TRUE)) %>%  # Calculate mean gross income for each genre
+  arrange(desc(mean_gross_income))      # Sort genres by mean gross income in descending order
+
+# View the results
+genre_means
+```
+
+Here we might see what movies genres have most gross income. The most grossing genre is the western, the least - game shows.
+
