@@ -6,7 +6,7 @@ output: html_notebook
 ```{r}
 library(tidyverse)
 library(ggplot2)
-library(dplyr)
+library(dplyr) 
 ```
 
 ## Data Cleaning
@@ -135,9 +135,9 @@ Here we will try to find out whether director has impact on rating of movies
 
 The mean ratings of movies directed by a specific director (e.g., Christopher Nolan) are equal to the population mean.
 
-#### Alternative Hypothesis (H₁):
+#### Alternative Hypothesis ($H_{1}$):
 
-The mean ratings of movies directed by the specific director are sig- nificantly higher than the population mean.
+The mean ratings of movies directed by the specific director are significantly higher than the population mean.
 
 For this hypothesis we will use *t-test*
 
@@ -219,3 +219,66 @@ print(bar_plot)
 The p-value ($0.01948$) is less than the typical significance level ( $\alpha = 0.05$). This means we reject the null hypothesis ($H_{0}$) and accept the alternative hypothesis ($H_{1}$).
 
 There is sufficient evidence to conclude that the mean rating of movies directed by the specific director is significantly higher than the population mean rating at a 95% confidence level.
+
+### 3. How gross income changes from year to year
+
+We are examining whether the gross income of movies is significantly influenced by the year of release.
+
+#### Null Hypothesis ($H_{0}$):
+
+The gross income of movies does not change significantly with the year of release.
+
+#### Alternative Hypothesis ($H_{1}$):
+
+The gross income of movies changes significantly with the year of release.
+
+Here we use **ANOVA test**, because it is appropriate since it tests the differences in the means of a continuous variable (gross income) across multiple groups (genres or years).
+
+### Key Concepts of ANOVA (Analysis of Variance)
+
+1.  **Between-Groups Variation (SSB):**\
+    Measures how the mean gross income differs between years. A large SSB indicates a significant difference in gross income between years.
+
+2.  **Within-Groups Variation (SSW):**\
+    Measures the variability of gross income within each year. A small SSW suggests that movies within the same year have similar gross incomes.
+
+3.  **Total Variation (SST):**\
+    The total variation in gross income across all movies. The relationship is: $SST = SSB + SSW$
+
+4.  **Mean Square Between Groups (MSB):**\
+    $MSB = \frac{SSB}{df_B}, \quad df_B = k - 1$ where k is the number of years.
+
+5.  **Mean Square Within Groups (MSW):**\
+    $MSW = \frac{SSW}{df_W}, \quad df_W = n - k$ where n is the total number of movies.
+
+6.  **F-Statistic:**\
+    $F = \frac{MSB}{MSW}$ The F-statistic compares the variation between groups (years) to the variation within groups (movies in the same year).
+
+7.  Using the F-statistic and the degrees of freedom, determine the **p-value** from the F-distribution.
+
+### R Implementation
+
+```{r}
+
+# Ensure 'year' is treated as a categorical variable
+movies$year <- as.factor(movies$year)
+
+# Perform ANOVA
+anova_result <- aov(gross_income ~ year, data = movies)
+
+# Summary of ANOVA
+summary(anova_result)
+
+
+#visualization of gross income distribution across years
+ggplot(movies, aes(x = year, y = gross_income)) +
+  geom_boxplot() +
+  labs(title = "Gross Income Across Years", x = "Year", y = "Gross Income") +
+  theme_minimal()
+
+
+```
+
+### Test conclusion
+
+The p-value associated with the “year” factor is \< 2e-16, which is extremely small (much smaller than the typical significance level of 0.05). This means that the gross income of movies does change significantly over the years, so we reject the null hypothesis.
