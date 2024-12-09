@@ -111,9 +111,22 @@ ggplot(movies_data_separated, aes(x = genre, y = gross_income)) +
 
 ### Test conclusion
 
--   **F-value**: A value of **3.763** means that the variation between genres is about 3.763 times larger than the variation within genres.
--   **P-value**: The p-value is **1.9e-08**, which is **very small**, meaning the result is statistically significant. This tells us that the genre **does indeed affect gross income**.
--   **Plot**: Plot generated based on data also prove that gross income vary between genres.
+#### Results:
+
+From the ANOVA test:
+
+-   $F(26, 65283) = 86.3$'
+
+-   $p < 2 \times 10^{-16}$
+
+#### Conclusion:
+
+The **null hypothesis (H₀)** is **rejected** based on the extremely low $p$-value ($p < 2 \times 10^{-16}$), which indicates that the observed differences in gross income across genres are highly unlikely to have occurred by chance.
+
+#### Implications:
+
+-   The **alternative hypothesis (H₁)** is supported, suggesting that there is a significant relationship between a movie's genre and its gross income. Movies in certain genres tend to have higher gross income compared to others.
+-   The large $F$-value further reinforces that the variation in gross income across genres is substantial and noteworthy.
 
 ```{r}
 genre_means <- movies_data_separated %>%
@@ -125,7 +138,7 @@ genre_means <- movies_data_separated %>%
 genre_means
 ```
 
-Here we might see what movies genres have most gross income. The most grossing genre is the western, the least - game shows.
+Here we might see what movies genres have most gross income. The most grossing genre is the sci-fy, the least - history.
 
 ### 2. Movies directed by a specific director are significantly higher than the the average rating of all movies.
 
