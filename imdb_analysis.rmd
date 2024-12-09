@@ -3,10 +3,47 @@ title: "Research project"
 output: html_notebook
 ---
 
+# Final Report
+
+[**Team: Khrystyna Korets, Bozhena Sai, Sofiia Sydorchuk**]{.smallcaps}
+
+[**Data Set: IMDB Movies Dataset**]{.smallcaps}
+
+[**Kaggle: <https://www.kaggle.com/datasets/ashishjangra27/imdb-movies-dataset>**]{.smallcaps}
+
+## Goal of the project
+
+~Our team aims to study the main factors that affect the success of films. We will use data analysis on an existing dataset to find patterns and relationships between important aspects like audience ratings, box office earnings, and other key factors. Based on our findings, we will give recommendations to film studios on how to make successful films with high ratings and strong financial performance.~
+
+## Dataset Information
+
+~Data set that our team chose for this research project is having the data of 2.5 Million movies/series listed on the official website of IMDB. IMDB is one of the main sources which people use to judge the movie and it‘s rating plays an important role for a lot of people watching a movie. This data set contain next information (columns) about every movie (data types changed from original data set during data cleaning):~
+
+| Field | Description | Data type |
+|------------------------|------------------------|------------------------|
+| `id` | Movie ID on IMDb platform | `<chr>` |
+| `name` | The title of the movie | `<chr>` |
+| `year` | Year of release | `<chr>` |
+| `rating` | Average audience rating | `<dbl>` |
+| `certificate` | Age rating of the movie (suitable audience age) | `<dbl>` |
+| `duration` | Length of the movie | `<int> (in minutes)` |
+| `genre` | Genre(s) the movie belongs to | `<chr> (comma separated)` |
+| `votes` | Number of votes received on IMDb | `<dbl>` |
+| `gross_income` | Total income from all sources before tax deductions | `<dbl>` |
+| `directors_name` | Name of the director(s) | `<chr>` |
+| `stars_name` | List of movie stars who starred in the movie | `<chr> (comma separated)` |
+| `description` | Short description or synopsis of the movie | `<chr>` |
+
+# Analysis Objectives
+
+Install packages and libraries for analysis.
+
 ```{r}
 library(tidyverse)
 library(ggplot2)
 library(dplyr) 
+library(tidytext)
+library(wordcloud)
 ```
 
 ## Data Cleaning
@@ -40,8 +77,8 @@ movies <- movies %>%
   ))
 movies <- movies %>%
   mutate(
-    gross_income = gsub(",", "", gross_income), # Видаляємо коми
-    gross_income = as.numeric(gross_income)    # Перетворюємо на числовий формат
+    gross_income = gsub(",", "", gross_income),
+    gross_income = as.numeric(gross_income)
   )
 movies <- movies %>%
   mutate(
@@ -58,8 +95,9 @@ head(movies)
 
 ## Data Visualization
 
+~During data visualization, we wanted to explore trends and patterns in the movie industry. By analyzing ratings, box office earnings, genres, and other factors, we aimed to uncover how different elements contribute to a film’s success. Visuals helped us spot interesting tendencies, like how budgets affect performance, which genres are most popular, and how audience preferences have changed over time.~
+
 ```{r}
-# Create a histogram of movie ratings
 ggplot(movies, aes(x = rating)) +
   geom_histogram(binwidth = 0.5, fill = "pink", color = "black", alpha = 0.7) +
   labs(title = "Distribution of Movie Ratings",
@@ -74,17 +112,16 @@ mean_rating <- mean(movies$rating)
 mean_rating
 ```
 
+~The plot reveals the distribution of ratings across all movies in the dataset. It shows that the majority of movies (nearly 4,500) have ratings around 6 out of 10. While the distribution of ratings appears to follow a roughly normal shape, it is clear that more movies have ratings below the overall mean (which is 6.15 points).~
+
 ```{r}
-# 1. Group by year and calculate total gross income per year
 total_gross_income_per_year <- movies %>%
   group_by(year) %>%
   summarise(TotalGrossIncome = sum(gross_income)) %>%
-  arrange(desc(TotalGrossIncome))  # Sort in descending order
+  arrange(desc(TotalGrossIncome))
 
-# 2. Select the top 15 years with highest gross income
 top_15_years <- head(total_gross_income_per_year, 15)
 
-# 3. Plot the results using a bar plot
 ggplot(top_15_years, aes(x = reorder(year, -TotalGrossIncome), y = TotalGrossIncome)) +
   geom_bar(stat = "identity", fill = "purple", color = "black", alpha = 0.7) +
   labs(title = "Top 15 Years with Highest Gross Income",
@@ -95,24 +132,64 @@ ggplot(top_15_years, aes(x = reorder(year, -TotalGrossIncome), y = TotalGrossInc
 
 ```
 
+~The most successful year in the movie industry was 2019, with nearly \$15 billion in earnings, significantly outpacing subsequent years. For example, in 2022, earnings were slightly over \$11 billion with 4 billion difference.~
+
 ```{r}
 top_movies_by_votes <- movies %>%
   arrange(desc(votes)) %>%
-  head(15)  # Adjust the number (15) to any other number as needed
+  head(15)
 
-# Create a bar chart to visualize top movies by votes
 ggplot(top_movies_by_votes, aes(x = reorder(name, votes), y = votes, fill = name)) +
   geom_bar(stat = "identity", color = "black", alpha = 0.7) +
   labs(title = "Top 15 Movies by Number of Votes",
        x = "Movie Name",
        y = "Number of Votes") +
-  coord_flip() +  # Flip the coordinates to make the movie names readable
+  coord_flip() +
   theme_minimal() +
   theme(axis.title.x = element_blank(), 
-        axis.text.x = element_blank(), # Remove text on x-axis
-        axis.text.y = element_blank())  # Remove text on y-axis
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank())
 
 ```
+
+~The most-voted movie in our dataset is *Batman Begins*. Also making the top five are *Django Unchained*, *Gladiator*, *Inception*, and *Inglourious Basterds*.~
+
+```{r}
+word_counts <- movies %>%
+  unnest_tokens(word, description) %>%             
+  anti_join(stop_words, by = join_by(word)) %>% 
+  count(word, sort = TRUE) 
+```
+
+```{r}
+top_words <- word_counts %>% head(100)
+wordcloud(words = top_words$word, freq = top_words$n, min.freq = 1,
+          scale = c(3,0.5), colors = brewer.pal(8, "Dark2"))
+```
+
+~There you might see top 100 words used in movie descriptions by their frequency.~
+
+```{r}
+top_movies <- movies %>%
+  filter(!is.na(rating), !is.na(gross_income)) %>%
+  slice_max(rating, n = 15) %>%
+  bind_rows(slice_max(movies, gross_income, n = 10))
+
+top_actors <- top_movies %>%
+  separate_rows(stars_name, sep = ",") %>%
+  count(stars_name, sort = TRUE)
+
+top_actors <- top_actors %>% head(15)
+
+ggplot(top_actors, aes(x = reorder(stars_name, n), y = n, fill = stars_name)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "Top 10 Actors in Highest-Rated and Highest-Grossing Movies",
+       x = "Actor", y = "Frequency") +
+  theme_minimal()
+```
+
+~This plot showing us top of most successful actors and actress's by number of highest-rated and highest-grossing movies they starred in. The most successful is Doug Cockle. The first woman in rating is Ashley Johnson who placed only 8-th place.~
 
 ## Hypothesis test
 
@@ -363,4 +440,8 @@ The p-value associated with the “year” factor is \< 2e-16, which is extremel
 
 ## Conclusions
 
-The p-value associated with the “year” factor is \< 2e-16, which is extremely small (much smaller than the typical significance level of 0.05). This means that the gross income of movies does change significantly over the years, so we reject the null hypothesis.
+In this study, we examined various factors that contribute to the success of films, including audience ratings, box office earnings, genre, and director influence. Our analysis revealed that most films tend to have ratings around 6 out of 10, with a slight skew toward lower ratings. This suggests that achieving high ratings is challenging and may be an important factor for success. The year 2019 stood out as the most successful year for the movie industry in terms of box office earnings, with a notable decline in subsequent years. This suggests that while the industry can experience periods of peak performance, earnings fluctuate over time.
+
+We also found that certain genres, such as sci-fi, have a stronger correlation with higher earnings, while others, like historical films, tend to have lower gross incomes. This highlights the significant role that genre selection plays in a film's financial success. Furthermore, our analysis showed that movies directed by certain individuals tend to receive higher ratings compared to the average, indicating that experienced or popular directors have a notable impact on a film's success. The significant changes in box office earnings over the years suggest that market trends and audience preferences evolve, making it crucial for film studios to stay attuned to these shifts.
+
+In conclusion, the success of films is influenced by a combination of factors, including genre, director, and timing of release. Understanding these elements can help film studios make more informed decisions when producing and marketing films, ultimately increasing the likelihood of achieving high ratings and strong financial performance.
