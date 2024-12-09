@@ -11,6 +11,12 @@ library(dplyr)
 
 ## Data Cleaning
 
+The data cleaning started by removing rows with missing or incorrect values. Any rows where gross_income was 0, directors_name was "nm0000000", or rating was 11.0 were deleted. These values didn’t make sense for analysis and could affect results.
+
+Then, the certificate column was cleaned up by turning its text values into numbers. For example, certificates like "G" or "TV-G" were changed to 1, "6+" became 6, and so on. Anything that didn’t fit into a known group was set to 0.
+
+The gross_income and votes columns had commas in their values, so those were removed, and the data was converted into numbers. The duration column, which had extra text, was cleaned to keep only the numbers and was turned into integers.
+
 ```{r}
 movies <- read.csv("movies.csv")
 ```
@@ -42,10 +48,69 @@ movies <- movies %>%
     votes = gsub(",", "", votes),
     votes = as.numeric(votes)
   )
+movies_per_year$year <- as.numeric(as.character(movies_per_year$year))
 
 movies <- movies %>%
   mutate(duration = as.integer(gsub("[^0-9]", "", duration)))
 head(movies)
+
+```
+
+## Data Visualization
+
+```{r}
+# Create a histogram of movie ratings
+ggplot(movies, aes(x = rating)) +
+  geom_histogram(binwidth = 0.5, fill = "pink", color = "black", alpha = 0.7) +
+  labs(title = "Distribution of Movie Ratings",
+       x = "Rating",
+       y = "Frequency") +
+  theme_minimal()
+
+```
+
+```{r}
+mean_rating <- mean(movies$rating)
+mean_rating
+```
+
+```{r}
+# 1. Group by year and calculate total gross income per year
+total_gross_income_per_year <- movies %>%
+  group_by(year) %>%
+  summarise(TotalGrossIncome = sum(gross_income)) %>%
+  arrange(desc(TotalGrossIncome))  # Sort in descending order
+
+# 2. Select the top 15 years with highest gross income
+top_15_years <- head(total_gross_income_per_year, 15)
+
+# 3. Plot the results using a bar plot
+ggplot(top_15_years, aes(x = reorder(year, -TotalGrossIncome), y = TotalGrossIncome)) +
+  geom_bar(stat = "identity", fill = "purple", color = "black", alpha = 0.7) +
+  labs(title = "Top 15 Years with Highest Gross Income",
+       x = "Year",
+       y = "Total Gross Income (in millions)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r}
+top_movies_by_votes <- movies %>%
+  arrange(desc(votes)) %>%
+  head(15)  # Adjust the number (15) to any other number as needed
+
+# Create a bar chart to visualize top movies by votes
+ggplot(top_movies_by_votes, aes(x = reorder(name, votes), y = votes, fill = name)) +
+  geom_bar(stat = "identity", color = "black", alpha = 0.7) +
+  labs(title = "Top 15 Movies by Number of Votes",
+       x = "Movie Name",
+       y = "Number of Votes") +
+  coord_flip() +  # Flip the coordinates to make the movie names readable
+  theme_minimal() +
+  theme(axis.title.x = element_blank(), 
+        axis.text.x = element_blank(), # Remove text on x-axis
+        axis.text.y = element_blank())  # Remove text on y-axis
 
 ```
 
@@ -293,5 +358,9 @@ ggplot(movies, aes(x = year, y = gross_income)) +
 ```
 
 ### Test conclusion
+
+The p-value associated with the “year” factor is \< 2e-16, which is extremely small (much smaller than the typical significance level of 0.05). This means that the gross income of movies does change significantly over the years, so we reject the null hypothesis.
+
+## Conclusions
 
 The p-value associated with the “year” factor is \< 2e-16, which is extremely small (much smaller than the typical significance level of 0.05). This means that the gross income of movies does change significantly over the years, so we reject the null hypothesis.
